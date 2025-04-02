@@ -116,6 +116,10 @@ def mkInstantiateMVars (decls : List PatVarDecl) : List PatVarDecl → MetaM Q(M
       mkLambdaQ _ decl.fvar q($(← mkInstantiateMVars decls rest))
     return q(Bind.bind (instantiateMVars $(decl.fvar)) $instMVars)
 
+/-- `isDefEqR a b` is used instead of `withReducible (isDefEq a b)`, because it saves time during compilation. -/
+def isDefEqR (a b : Expr) : MetaM Bool :=
+  withReducible (isDefEq a b)
+
 def mkIsDefEqCore (decls : List PatVarDecl) (pat discr : Q(Expr)) :
     List PatVarDecl → MetaM Q(MetaM $(mkIsDefEqType decls))
   | { ty := none, fvarId := fvarId, userName := userName } :: rest =>
@@ -127,7 +131,7 @@ def mkIsDefEqCore (decls : List PatVarDecl) (pat discr : Q(Expr)) :
   | [] => do
     let instMVars ← mkInstantiateMVars decls decls
     return q(do
-      let matches? ← withReducible $ isDefEq $pat $discr
+      let matches? ← isDefEqR $pat $discr
       (if matches? then $instMVars else return $(mkIsDefEqResult false decls)))
 
 def mkIsDefEq (decls : List PatVarDecl) (pat discr : Q(Expr)) : MetaM Q(MetaM $(mkIsDefEqType decls)) := do
